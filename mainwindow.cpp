@@ -115,7 +115,7 @@ void MainWindow::on_comboBox_currentTextChanged(const QString &arg1)
 void MainWindow::on_buttonAddPlanet_clicked()
 {
     Planet *planet = new Planet();
-    planet->Load(NULL, "gfx/Planet-Red.png", 218, 1, 1, vector2d(0, 0), 7 * pow(10, 10));
+    planet->Load(NULL, "gfx/Planet-Red.png", 218, 1, 1, vector2d(0, 0), 120000);
     Entity::entities.push_back(planet);
     UpdateView();
     ui->comboBox->addItem(QString::number(itemID) + " Planeta");
@@ -134,7 +134,7 @@ void MainWindow::on_buttonAddPlanet_clicked()
 void MainWindow::on_asteroidBigAdd_clicked()
 {
     AsteroidBig *asteroid = new AsteroidBig();
-    asteroid->Load(NULL, "gfx/Asteroid-Big.png", 98, 1, 1, vector2d(0, 0), pow(10, 5));
+    asteroid->Load(NULL, "gfx/Asteroid-Big.png", 98, 1, 1, vector2d(0, 0), 12000);
     Entity::entities.push_back(asteroid);
     UpdateView();
     ui->comboBox->addItem(QString::number(itemID) + " Asteroida D");
@@ -153,7 +153,7 @@ void MainWindow::on_asteroidBigAdd_clicked()
 void MainWindow::on_asteroidMediumAdd_clicked()
 {
     AsteroidMiddle *asteroid = new AsteroidMiddle();
-    asteroid->Load(NULL, "gfx/Asteroid-Middle.png", 89, 1, 1, vector2d(0, 0), 5 * pow(10, 4));
+    asteroid->Load(NULL, "gfx/Asteroid-Middle.png", 89, 1, 1, vector2d(0, 0), 6000);
     Entity::entities.push_back(asteroid);
     UpdateView();
     ui->comboBox->addItem(QString::number(itemID) + " Asteroida Ś");
@@ -172,7 +172,7 @@ void MainWindow::on_asteroidMediumAdd_clicked()
 void MainWindow::on_asteroidSmallAdd_clicked()
 {
     AsteroidSmall *asteroid = new AsteroidSmall();
-    asteroid->Load(NULL, "gfx/Asteroid-Small.png", 43, 1, 1, vector2d(0, 0), 25000);
+    asteroid->Load(NULL, "gfx/Asteroid-Small.png", 43, 1, 1, vector2d(0, 0), 3000);
     Entity::entities.push_back(asteroid);
     UpdateView();
     ui->comboBox->addItem(QString::number(itemID) + " Asteroida M");
@@ -417,7 +417,7 @@ void MainWindow::on_zoomButtonDown_clicked()
 void MainWindow::on_spaceshipAdd_clicked()
 {
     SpaceShip *spaceShip = new SpaceShip();
-    spaceShip->Load(NULL, "gfx/Spaceship.png", 102, 1, 1, vector2d(0, 0), pow(10, 5));
+    spaceShip->Load(NULL, "gfx/Spaceship.png", 102, 1, 1, vector2d(0, 0), 1000);
     Entity::entities.push_back(spaceShip);
     UpdateView();
     ui->comboBox->addItem(QString::number(itemID) + " Statek kosmiczny");
