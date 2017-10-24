@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>gfx/Asteroid-Big.png</file>
+        <file>gfx/Asteroid-Middle.png</file>
+        <file>gfx/Spaceship.png</file>
+        <file>gfx/Asteroid-Small.png</file>
+        <file>gfx/particle.png</file>
+        <file>gfx/Planet-Red.png</file>
+        <file>gfx/rocket.png</file>
+        <file>gfx/sellingpoint.png</file>
+    </qresource>
+</RCC>
