@@ -29,15 +29,16 @@ void Rocket::Explode() {
     /* rakieta rozpada się na cząstki o określonej długości życia,
      * które mogą zderzyć się z innymi obiektami
      */
-    uint numberOfParticles = 50;
+    uint numberOfParticles = 30;
     double particleMass = mass / numberOfParticles;
     double angle = 2*M_PI / numberOfParticles;
     double initVelocity = 0.5;
     for(uint i = 0; i < numberOfParticles; i++) {
         vector2d unitVector = vector2d(cos(i*angle), sin(i*angle));
         Particle* tmp = new Particle();
-        tmp->Load(texture->Renderer(), "gfx/particle.png", 2, 1, 1, location + unitVector / 10, particleMass);
+        tmp->Load(texture->Renderer(), "gfx/particle.png", 34, 16, 32, location + unitVector / 10, particleMass);
         tmp->SetInitialVelocity(velocity + unitVector * initVelocity);
+        tmp->rotation = 360 / numberOfParticles * i;
         entities.push_back(tmp);
     }
     alive = false;

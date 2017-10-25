@@ -19,11 +19,11 @@ void AsteroidMiddle::Collide() {
                     AsteroidSmall* a2 = new AsteroidSmall();
 
                     Entity::entities.push_back(a1);
-                    a1->Load(texture->Renderer(), "gfx/asteroid_small.png", 14, 1, 1, location + (location / location.Length()) * r, mass / 2);
+                    a1->Load(texture->Renderer(), "gfx/Asteroid-Small.png", 43, 1, 1, location + (location / location.Length()) * r, mass / 2);
                     a1->SetInitialVelocity(momentum / mass + velocity);
 
                     Entity::entities.push_back(a2);
-                    a2->Load(texture->Renderer(), "gfx/asteroid_small.png", 14, 1, 1, location - (location / location.Length()) * r, mass / 2);
+                    a2->Load(texture->Renderer(), "gfx/Asteroid-Small.png", 43, 1, 1, location - (location / location.Length()) * r, mass / 2);
                     a2->SetInitialVelocity(momentum / mass + velocity);
                 } break;
             case ENTITY_TYPE_PARTICLE: Asteroid::ParticleCollide(colliding[i]); break;

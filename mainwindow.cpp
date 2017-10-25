@@ -41,13 +41,19 @@ void MainWindow::UpdateView() {
         item->setRotation(entity->rotation);
         scene->addItem(item);
         QPen pen;
-        const QColor color(0, 0, 255);
+        QColor color(0, 0, 255);
         pen.setColor(color);
         pen.setWidth(3);
         scene->addLine(entity->location.x, entity->location.y,
                        entity->location.x + entity->velocity.x,
                        entity->location.y + entity->velocity.y,
                        pen);
+        color = QColor(255, 255, 0);
+        pen.setColor(color);
+        pen.setWidth(1);
+        scene->addEllipse(entity->location.x + entity->collisionCenter.x - entity->r * 2,
+                          entity->location.y + entity->collisionCenter.y - entity->r * 2,
+                          entity->r * 2, entity->r * 2, pen);
     }
     ui->graphicsView->show();
 }
@@ -108,6 +114,9 @@ void MainWindow::on_comboBox_currentTextChanged(const QString &arg1)
     ui->xVelSpinBox->setValue(entity->velocity.x);
     ui->yVelSpinBox->setValue(entity->velocity.y);
     ui->massSpinBox->setValue(entity->mass);
+    ui->colXPosSpinBox->setValue(entity->collisionCenter.x);
+    ui->colYPosSpinBox->setValue(entity->collisionCenter.y);
+    ui->colRPosSpinBox->setValue(entity->r);
 
     ui->graphicsView->centerOn(entity->location.x, entity->location.y);
 }
@@ -127,6 +136,9 @@ void MainWindow::on_buttonAddPlanet_clicked()
     ui->xVelSpinBox->setValue(planet->velocity.x);
     ui->yVelSpinBox->setValue(planet->velocity.y);
     ui->massSpinBox->setValue(planet->mass);
+    ui->colXPosSpinBox->setValue(planet->collisionCenter.x);
+    ui->colYPosSpinBox->setValue(planet->collisionCenter.y);
+    ui->colRPosSpinBox->setValue(planet->r);
 
     ui->comboBox->setCurrentIndex(ui->comboBox->count() -1);
 }
@@ -146,6 +158,9 @@ void MainWindow::on_asteroidBigAdd_clicked()
     ui->xVelSpinBox->setValue(asteroid->velocity.x);
     ui->yVelSpinBox->setValue(asteroid->velocity.y);
     ui->massSpinBox->setValue(asteroid->mass);
+    ui->colXPosSpinBox->setValue(asteroid->collisionCenter.x);
+    ui->colYPosSpinBox->setValue(asteroid->collisionCenter.y);
+    ui->colRPosSpinBox->setValue(asteroid->r);
 
     ui->comboBox->setCurrentIndex(ui->comboBox->count() -1);
 }
@@ -165,6 +180,9 @@ void MainWindow::on_asteroidMediumAdd_clicked()
     ui->xVelSpinBox->setValue(asteroid->velocity.x);
     ui->yVelSpinBox->setValue(asteroid->velocity.y);
     ui->massSpinBox->setValue(asteroid->mass);
+    ui->colXPosSpinBox->setValue(asteroid->collisionCenter.x);
+    ui->colYPosSpinBox->setValue(asteroid->collisionCenter.y);
+    ui->colRPosSpinBox->setValue(asteroid->r);
 
     ui->comboBox->setCurrentIndex(ui->comboBox->count() -1);
 }
@@ -184,6 +202,9 @@ void MainWindow::on_asteroidSmallAdd_clicked()
     ui->xVelSpinBox->setValue(asteroid->velocity.x);
     ui->yVelSpinBox->setValue(asteroid->velocity.y);
     ui->massSpinBox->setValue(asteroid->mass);
+    ui->colXPosSpinBox->setValue(asteroid->collisionCenter.x);
+    ui->colYPosSpinBox->setValue(asteroid->collisionCenter.y);
+    ui->colRPosSpinBox->setValue(asteroid->r);
 
     ui->comboBox->setCurrentIndex(ui->comboBox->count() -1);
 }
@@ -234,6 +255,9 @@ void MainWindow::on_sellingPointAdd_clicked()
     ui->xVelSpinBox->setValue(sellingPoint->velocity.x);
     ui->yVelSpinBox->setValue(sellingPoint->velocity.y);
     ui->massSpinBox->setValue(sellingPoint->mass);
+    ui->colXPosSpinBox->setValue(sellingPoint->collisionCenter.x);
+    ui->colYPosSpinBox->setValue(sellingPoint->collisionCenter.y);
+    ui->colRPosSpinBox->setValue(sellingPoint->r);
 
     ui->comboBox->setCurrentIndex(ui->comboBox->count() -1);
 }
@@ -430,6 +454,42 @@ void MainWindow::on_spaceshipAdd_clicked()
     ui->xVelSpinBox->setValue(spaceShip->velocity.x);
     ui->yVelSpinBox->setValue(spaceShip->velocity.y);
     ui->massSpinBox->setValue(spaceShip->mass);
+    ui->colXPosSpinBox->setValue(spaceShip->collisionCenter.x);
+    ui->colYPosSpinBox->setValue(spaceShip->collisionCenter.y);
+    ui->colRPosSpinBox->setValue(spaceShip->r);
 
     ui->comboBox->setCurrentIndex(ui->comboBox->count() -1);
+}
+
+void MainWindow::on_colXPosSpinBox_editingFinished()
+{
+    if(ui->comboBox->count() == 0)
+        return;
+    double value = ui->colXPosSpinBox->value();
+    int ID = ui->comboBox->currentText().split(" ")[0].toInt();
+    Entity *entity = entityList.at(ID);
+    entity->collisionCenter.x = value;
+    UpdateView();
+}
+
+void MainWindow::on_colYPosSpinBox_editingFinished()
+{
+    if(ui->comboBox->count() == 0)
+        return;
+    double value = ui->colYPosSpinBox->value();
+    int ID = ui->comboBox->currentText().split(" ")[0].toInt();
+    Entity *entity = entityList.at(ID);
+    entity->collisionCenter.y = value;
+    UpdateView();
+}
+
+void MainWindow::on_colRPosSpinBox_editingFinished()
+{
+    if(ui->comboBox->count() == 0)
+        return;
+    double value = ui->colRPosSpinBox->value();
+    int ID = ui->comboBox->currentText().split(" ")[0].toInt();
+    Entity *entity = entityList.at(ID);
+    entity->r = value;
+    UpdateView();
 }

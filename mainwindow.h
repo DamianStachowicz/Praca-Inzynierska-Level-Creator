@@ -63,6 +63,12 @@ private slots:
 
     void on_spaceshipAdd_clicked();
 
+    void on_colXPosSpinBox_editingFinished();
+
+    void on_colYPosSpinBox_editingFinished();
+
+    void on_colRPosSpinBox_editingFinished();
+
 private:
     Ui::MainWindow *ui;
     QGraphicsScene *scene;
