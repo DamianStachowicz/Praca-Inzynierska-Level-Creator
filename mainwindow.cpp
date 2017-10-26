@@ -51,8 +51,8 @@ void MainWindow::UpdateView() {
         color = QColor(255, 255, 0);
         pen.setColor(color);
         pen.setWidth(1);
-        scene->addEllipse(entity->location.x + entity->collisionCenter.x - entity->r * 2,
-                          entity->location.y + entity->collisionCenter.y - entity->r * 2,
+        scene->addEllipse(entity->location.x + entity->collisionCenter.x - entity->r,
+                          entity->location.y + entity->collisionCenter.y - entity->r,
                           entity->r * 2, entity->r * 2, pen);
     }
     ui->graphicsView->show();
@@ -124,7 +124,7 @@ void MainWindow::on_comboBox_currentTextChanged(const QString &arg1)
 void MainWindow::on_buttonAddPlanet_clicked()
 {
     Planet *planet = new Planet();
-    planet->Load(NULL, "gfx/Planet-Red.png", 218, 1, 1, vector2d(0, 0), 120000, vector2d(107, 106), 106);
+    planet->Load(NULL, "gfx/Planet-Red.png", 218, 1, 1, vector2d(0, 0), 120000, vector2d(0, 2), 106);
     Entity::entities.push_back(planet);
     UpdateView();
     ui->comboBox->addItem(QString::number(itemID) + " Planeta");

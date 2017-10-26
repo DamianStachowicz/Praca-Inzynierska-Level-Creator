@@ -53,7 +53,7 @@ void Entity::Load(SDL_Renderer *renderer, std::__cxx11::string texturePath, Sint
     animation = Animation(numberOfFrames, framesPerSecond, texture->Width(), frameHeight);
     location = initLocation;
     this->mass = mass;
-    this->collisionCenter = vector2d(r, r);
+    this->collisionCenter = vector2d(0, 0);
 }
 
 void Entity::Load(SDL_Renderer *renderer, std::__cxx11::string texturePath, Sint16 frameHeight, Uint8 numberOfFrames,
