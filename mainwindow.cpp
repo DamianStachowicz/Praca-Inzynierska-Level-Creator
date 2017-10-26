@@ -124,7 +124,7 @@ void MainWindow::on_comboBox_currentTextChanged(const QString &arg1)
 void MainWindow::on_buttonAddPlanet_clicked()
 {
     Planet *planet = new Planet();
-    planet->Load(NULL, "gfx/Planet-Red.png", 218, 1, 1, vector2d(0, 0), 120000);
+    planet->Load(NULL, "gfx/Planet-Red.png", 218, 1, 1, vector2d(0, 0), 120000, vector2d(107, 106), 106);
     Entity::entities.push_back(planet);
     UpdateView();
     ui->comboBox->addItem(QString::number(itemID) + " Planeta");
