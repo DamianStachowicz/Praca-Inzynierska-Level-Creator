@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <tinyxml2.h>
 #include "texture.h"
 #include "vector2d.h"
 #include "camera.h"
@@ -26,19 +27,6 @@ enum {
     ENTITY_TYPE_SELLING_POINT
 };
 
-class GfxData
-{
-    public:
-        std::string path;
-        Uint8 entityType;
-        Sint16 frameHeight;
-        Uint8 numberOfFrames;
-        Uint8 framesPerSecond;
-
-        GfxData();
-        GfxData(std::string data);
-};
-
 class Entity
 {
     protected:
@@ -54,6 +42,7 @@ class Entity
         bool     alive;
         Animation animation;
         double maxSpeed;
+        Uint8 state;
 
     public:
         static Timer timer;
@@ -72,6 +61,8 @@ class Entity
         virtual void Load(SDL_Renderer* renderer, std::string texturePath, Sint16 frameHeight, Uint8 numberOfFrames,
                   Uint8 framesPerSecond, vector2d initLocation, double mass);
         virtual void Load(SDL_Renderer* renderer, std::string texturePath, Sint16 frameHeight, Uint8 numberOfFrames,
+                  Uint8 framesPerSecond, vector2d initLocation, double mass, vector2d collisionCenter, double r);
+        virtual void Load(SDL_Renderer* renderer, std::string texturePath, Sint16 frameHeight, Sint16 frameWidth, Uint8 numberOfFrames,
                   Uint8 framesPerSecond, vector2d initLocation, double mass, vector2d collisionCenter, double r);
         void SetInitialVelocity(vector2d v);
         void Render();
@@ -92,13 +83,10 @@ class Entity
         void Bounce(Entity* ent);
         vector2d GetMinimapLocation(double ratio);
         double GetMinimapR(double ratio);
-        static std::vector<GfxData> GetGfxData(std::string cfgFile);
-        static void GenerateLevel(SDL_Renderer* renderer, Uint32* score, double size, Uint32 timeLimit, Uint8 numberOfPlanets,
-                                  Uint8 numberOfAsteroids, Uint8 numberOfSellingPoints, Uint8 seed);
-        static Uint8 EntityTypeCode(std::string name);
-        static std::vector<GfxData> FilterGfxData(std::vector<GfxData> gfxData, Uint8 type);
-        virtual bool Serialize(std::ofstream& file);
-        virtual bool Deserialize(std::ifstream& file, SDL_Renderer* renderer);
+        virtual bool Serialize(tinyxml2::XMLDocument* xmlDoc, tinyxml2::XMLNode* root);
+        virtual bool Deserialize(tinyxml2::XMLNode *root, SDL_Renderer* renderer);
+        vector2d CollisionCenter();
+        Uint8 VisibleCopy();
 };
 
 #endif // ENTITY_H

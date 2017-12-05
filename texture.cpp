@@ -9,11 +9,10 @@ Texture::Texture(){
 
 Texture::Texture(SDL_Renderer *renderer, std::string path)
 {
-    this->path = path;
-
     // Sprawdzenie, czy przekazano prawidłowy renderer
     if (renderer == NULL) {
         std::cerr << "Texture::Texture Błąd, nie przekazano prawidłowego renderera." << std::endl;
+        return;
     }
     // Przypisanie renderera
     this->renderer = renderer;
@@ -44,6 +43,8 @@ Texture::Texture(SDL_Renderer *renderer, std::string path)
     SDL_FreeSurface(surface);
 
     rawTexture = newTexture;
+
+    this->path = path;
 }
 
 Texture::Texture(SDL_Renderer *renderer, std::__cxx11::string text, TTF_Font *font, SDL_Color textColor) {

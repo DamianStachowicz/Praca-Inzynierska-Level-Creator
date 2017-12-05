@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = LevelCreator
 TEMPLATE = app
 
-LIBS += -lSDL2 -lSDL2_image -lSDL2_ttf
+LIBS += -lSDL2 -lSDL2_image -lSDL2_ttf -ltinyxml2
 
 SOURCES += main.cpp\
         mainwindow.cpp \

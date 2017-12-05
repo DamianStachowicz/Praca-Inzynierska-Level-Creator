@@ -18,6 +18,8 @@
 #include "rocket.h"
 #include "asteroidbig.h"
 #include "sellingpoint.h"
+#include "ingamestate.h"
+#include "menustate.h"
 
 /** @class Engine
  *  @brief Silnik gry
@@ -34,17 +36,15 @@ class Engine
         TTF_Font*     font;
         Texture*      scoreTexture;
         SDL_Color     scoreColor;
+        Texture*      scoreBg;
         Texture*      timerTexture;
         SDL_Color     timerColor;
+        InGameState   inGameState;
+        MenuState     menuState;
+        State*        currentState;
 
-        void Loop();   // główna pętla gry
-        void Render(); // funkcja rysująca obiekty na ekranie
-        void HandleEvent(SDL_Event* event); // obsługa zdarzeń
-        void HandleKeyDown(); // obsługa wciśnięcia klawisza na klawiaturze
-        void HandleKeyUp(); // obsługa puszczenia klawisza na klawiaturze
-        void HandleMouseMotion(SDL_MouseMotionEvent* event); // obsługa zdarzenia poruszenia kursorem
-        void HandleMouseButtonDown(SDL_MouseButtonEvent* event); // obsługa wciśnięcia przycisku myszy
-        void HandleMouseWheelScroll(SDL_MouseWheelEvent* event); // obsługa przesunięcia kułeczka myszy
+        void StartGame();
+        void EndGame();
 
     public:
         Uint32 score;
@@ -53,8 +53,8 @@ class Engine
         ~Engine();
         bool Init(); // funkcja inicjalizująca silnik
         void Run();  // funkcja uruchamiająca grę
-        bool Serialize(std::ofstream& file);
-        bool Deserialize(std::ifstream& file);
+        bool Serialize(tinyxml2::XMLDocument* xmlDoc, tinyxml2::XMLNode* root);
+        bool Deserialize(tinyxml2::XMLNode* root);
 };
 
 #endif // ENGINE_H

@@ -24,7 +24,8 @@ Entity::Entity()
     deathAnimationStarted = 0;
     alive = true;
     animation = Animation();
-    maxSpeed = 2000;
+    maxSpeed = 2;
+    state = 0;
 }
 
 Entity::~Entity() {
@@ -33,7 +34,7 @@ Entity::~Entity() {
 
 bool Entity::CheckCollision(Entity* ent) {
     // wektor odległości między środkami encji
-    vector2d v = (this->location + this->collisionCenter) - (ent->location + ent->collisionCenter);
+    vector2d v = (this->location + this->CollisionCenter()) - (ent->location + ent->CollisionCenter());
     // suma promieni
     double radia = this->r + ent->r;
     /* kolizja nastąpiła, jeśli odległość między
@@ -66,22 +67,35 @@ void Entity::Load(SDL_Renderer *renderer, std::__cxx11::string texturePath, Sint
     this->r = r;
 }
 
+void Entity::Load(SDL_Renderer *renderer, std::__cxx11::string texturePath, Sint16 frameHeight, Sint16 frameWidth,
+                  Uint8 numberOfFrames, Uint8 framesPerSecond, vector2d initLocation, double mass,
+                  vector2d collisionCenter, double r) {
+    texture = new Texture(renderer, texturePath);
+    animation = Animation(numberOfFrames, framesPerSecond, frameWidth, frameHeight);
+    location = initLocation;
+    this->mass = mass;
+    this->collisionCenter = collisionCenter;
+    this->r = r;
+}
+
 void Entity::SetInitialVelocity(vector2d v) {
     velocity = v;
 }
 
 void Entity::Render(double xOffset, double yOffset) {
-    double halfWidth = texture->Width() / 2;
+    double halfWidth = animation.Width() / 2;
+    double halfHeight = animation.Height() / 2;
+    Uint32 windowWidth = Camera::camera.windowWidth;
+    Uint32 windowHeight = Camera::camera.windowHeight;
     // Położenie i rozmiar muszą zostać dostosowane do położenia kamery (trójwymiarowego)
     double camX = Camera::camera.location.x;
     double camY = Camera::camera.location.y;
     double zoom = Camera::camera.zoom;
-    double offsetX = ( (1 - zoom) * Camera::camera.windowWidth ) / 2;
-    double offsetY = ( (1 - zoom) * Camera::camera.windowHeight ) / 2;
-    texture->Render(0, animation.CurrentFrame() * animation.Height(),     // srcX, srcY
+    texture->Render(state * animation.Width(),
+                    animation.CurrentFrame() * animation.Height(),     // srcX, srcY
                     animation.Width(), animation.Height(),                // srcWidth, srcHeight
-                    (location.x - halfWidth + camX + xOffset) * zoom + offsetX,           // destX
-                    (location.y - halfWidth + camY + yOffset) * zoom + offsetY,           // destY
+                    (location.x - halfWidth  - camX + xOffset) * zoom + windowWidth / 2,  // destX
+                    (location.y - halfHeight - camY + yOffset) * zoom + windowHeight / 2, // destY
                     animation.Width() * zoom, animation.Height() * zoom,  // destWidth, destHeight
                     rotation, SDL_FLIP_NONE);
 }
@@ -183,6 +197,8 @@ double Entity::GetMinimapR(double ratio) {
 
 void Entity::RenderCopy(int position) {
     switch(position) {
+        case LEVEL_COPY_NONE: break;
+        case LEVEL_COPY_DEFAULT: Render(0, 0); break;
         case LEVEL_COPY_MIDDLE_BOTTOM: Render(0, 2 * level.r); break;
         case LEVEL_COPY_LEFT_BOTTOM: Render(-2 * level.r, 2 * level.r); break;
         case LEVEL_COPY_LEFT_MIDDLE: Render(-2 * level.r, 0); break;
@@ -194,295 +210,326 @@ void Entity::RenderCopy(int position) {
     }
 }
 
-GfxData::GfxData(){
+bool Entity::Serialize(tinyxml2::XMLDocument *xmlDoc, tinyxml2::XMLNode *root) {
+    tinyxml2::XMLElement* subelement = xmlDoc->NewElement("r");
+    subelement->SetText(r);
+    root->InsertEndChild(subelement);
 
-}
+    subelement = xmlDoc->NewElement("velocity");
+    tinyxml2::XMLElement* subsubelement = xmlDoc->NewElement("x");
+    subsubelement->SetText(velocity.x);
+    subelement->InsertEndChild(subsubelement);
+    subsubelement = xmlDoc->NewElement("y");
+    subsubelement->SetText(velocity.y);
+    subelement->InsertEndChild(subsubelement);
+    root->InsertEndChild(subelement);
 
-std::vector<GfxData> Entity::GetGfxData(std::__cxx11::string cfgFile) {
-    std::vector<GfxData> GfxDataList;
-    std::ifstream list(cfgFile);
-    if(list.is_open()) {
-        std::string line;
-        while(getline(list, line)) {
-            GfxDataList.push_back(GfxData(line));
-        }
-    } else {
-        std::cerr << "Nie udało się pobrać listy grafik z pliku " << cfgFile << std::endl;
-    }
-    return GfxDataList;
-}
+    subelement = xmlDoc->NewElement("acceleration");
+    subsubelement = xmlDoc->NewElement("x");
+    subsubelement->SetText(acceleration.x);
+    subelement->InsertEndChild(subsubelement);
+    subsubelement = xmlDoc->NewElement("y");
+    subsubelement->SetText(acceleration.y);
+    subelement->InsertEndChild(subsubelement);
+    root->InsertEndChild(subelement);
 
-void Entity::GenerateLevel(SDL_Renderer* renderer, Uint32 *score, double size, Uint32 timeLimit, Uint8 numberOfPlanets,
-                           Uint8 numberOfAsteroids, Uint8 numberOfSellingPoints, Uint8 seed) {
-    // czyszczenie wektora encji
-    entities.clear();
-    level = Level(size, timeLimit);
+    subelement = xmlDoc->NewElement("force");
+    subsubelement = xmlDoc->NewElement("x");
+    subsubelement->SetText(force.x);
+    subelement->InsertEndChild(subsubelement);
+    subsubelement = xmlDoc->NewElement("y");
+    subsubelement->SetText(force.y);
+    subelement->InsertEndChild(subsubelement);
+    root->InsertEndChild(subelement);
 
-    // pobieranie listy grafik
-    std::vector<GfxData> gfxData = Entity::GetGfxData("gfx.txt");
-    std::vector<GfxData> planetGfx = Entity::FilterGfxData(gfxData, ENTITY_TYPE_PLANET);
-    std::vector<GfxData> asteroidGfx = Entity::FilterGfxData(gfxData, ENTITY_TYPE_ASTEROID);
-    std::vector<GfxData> sellingPointGfx = Entity::FilterGfxData(gfxData, ENTITY_TYPE_SELLING_POINT);
+    subelement = xmlDoc->NewElement("texture");
+    subelement->SetText(texture->path.c_str());
+    root->InsertEndChild(subelement);
 
-    // inicjowanie generatora liczb losowych
-    srand(seed);
+    subelement = xmlDoc->NewElement("deathAnimationStarted");
+    subelement->SetText(deathAnimationStarted);
+    root->InsertEndChild(subelement);
 
-    GfxData entityGfxData;
-    int index;
-    double maxVelocity = 2; // wzdłuż osi
-    double planetDensity = 100; // kg/px^3
-    double asteroidDensity = 200; // kg/px^3
-    double sellingPointDensity = 10; // kg/px^3
-    double mass;
-    vector2d location;
-    Entity* tmpEntity;
+    subelement = xmlDoc->NewElement("alive");
+    subelement->SetText(alive);
+    root->InsertEndChild(subelement);
 
-    // dodawanie planet
-    for(int i = 0; i < numberOfPlanets; i++) {
-        // losowanie grafiki planety
-        if(!planetGfx.size()) {
-            std::cerr << "Brak informacji o grafikach planet w pliku konfiguracyjnym" << std::endl;
-            return;
-        }
-        index = rand() % planetGfx.size();
-        entityGfxData = planetGfx[index];
-        // obliczanie masy
-        mass = 0.75 * M_PI * pow((double)entityGfxData.frameHeight / 2, 3) * planetDensity; // planeta jest kulą o zadanej gęstości
-        // losowanie położenia
-        location = vector2d((double)rand() / RAND_MAX * size, (double)rand() / RAND_MAX * size);
+    subelement = xmlDoc->NewElement("location");
+    subsubelement = xmlDoc->NewElement("x");
+    subsubelement->SetText(location.x);
+    subelement->InsertEndChild(subsubelement);
+    subsubelement = xmlDoc->NewElement("y");
+    subsubelement->SetText(location.y);
+    subelement->InsertEndChild(subsubelement);
+    root->InsertEndChild(subelement);
 
-        // inicjowanie nowej encji
-        tmpEntity = new Planet();
-        tmpEntity->Load(renderer, entityGfxData.path, entityGfxData.frameHeight, entityGfxData.numberOfFrames,
-                        entityGfxData.numberOfFrames, location, mass);
-        // upewnienie się, że encja z niczym nie koliduje
-        int safety = 0; // dodatkowe zabezpieczenie
-        tmpEntity->CheckCollisions();
-        while(tmpEntity->colliding.size() > 0) {
-            location = vector2d((double)rand() / RAND_MAX * size, (double)rand() / RAND_MAX * size);
-            tmpEntity->Load(renderer, entityGfxData.path, entityGfxData.frameHeight, entityGfxData.numberOfFrames,
-                            entityGfxData.numberOfFrames, location, mass);
-            if(safety > 1000) {
-                std::cerr << "Poziom zbyt mały lub za dużo obiektów." << std::endl;
-                return;
-            }
-            ++safety;
-        }
-        // losowanie początkowej prędkości
-        tmpEntity->SetInitialVelocity(vector2d((double)rand() / RAND_MAX * maxVelocity,
-                                               (double)rand() / RAND_MAX * maxVelocity));
-        // dodawanie encji
-        entities.push_back(tmpEntity);
-    }
+    subelement = xmlDoc->NewElement("rotation");
+    subelement->SetText(rotation);
+    root->InsertEndChild(subelement);
 
-    // dodawanie asteroid
-    for(int i = 0; i < numberOfAsteroids; i++) {
-        // losowanie grafiki asteroidy
-        if(!asteroidGfx.size()) {
-            std::cerr << "Brak informacji o grafikach asteroid w pliku konfiguracyjnym" << std::endl;
-            return;
-        }
-        index = rand() % asteroidGfx.size();
-        entityGfxData = asteroidGfx[index];
-        // obliczanie masy
-        mass = 0.75 * M_PI * pow((double)entityGfxData.frameHeight / 2, 3) * asteroidDensity; // planeta jest kulą o zadanej gęstości
-        // losowanie położenia
-        location = vector2d((double)rand() / RAND_MAX * size, (double)rand() / RAND_MAX * size);
+    subelement = xmlDoc->NewElement("type");
+    subelement->SetText(type);
+    root->InsertEndChild(subelement);
 
-        // inicjowanie nowej encji
-        tmpEntity = new Asteroid();
-        tmpEntity->Load(renderer, entityGfxData.path, entityGfxData.frameHeight, entityGfxData.numberOfFrames,
-                        entityGfxData.numberOfFrames, location, mass);
-        // upewnienie się, że encja z niczym nie koliduje
-        int safety = 0; // dodatkowe zabezpieczenie
-        tmpEntity->CheckCollisions();
-        while(tmpEntity->colliding.size() > 0) {
-            location = vector2d((double)rand() / RAND_MAX * size, (double)rand() / RAND_MAX * size);
-            tmpEntity->Load(renderer, entityGfxData.path, entityGfxData.frameHeight, entityGfxData.numberOfFrames,
-                            entityGfxData.numberOfFrames, location, mass);
-            if(safety > 1000) {
-                std::cerr << "Poziom zbyt mały lub za dużo obiektów." << std::endl;
-                return;
-            }
-            ++safety;
-        }
-        // losowanie początkowej prędkości
-        tmpEntity->SetInitialVelocity(vector2d((double)rand() / RAND_MAX * maxVelocity,
-                                               (double)rand() / RAND_MAX * maxVelocity));
-        // dodawanie encji
-        entities.push_back(tmpEntity);
-    }
+    subelement = xmlDoc->NewElement("mass");
+    subelement->SetText(mass);
+    root->InsertEndChild(subelement);
 
-    // dodawanie punktów sprzedarzy
-    for(int i = 0; i < numberOfAsteroids; i++) {
-        // losowanie grafiki asteroidy
-        if(!sellingPointGfx.size()) {
-            std::cerr << "Brak informacji o grafikach punktów sprzedaży w pliku konfiguracyjnym" << std::endl;
-            return;
-        }
-        index = rand() % sellingPointGfx.size();
-        entityGfxData = sellingPointGfx[index];
-        // obliczanie masy
-        mass = 0.75 * M_PI * pow((double)entityGfxData.frameHeight / 2, 3) * sellingPointDensity; // planeta jest kulą o zadanej gęstości
-        // losowanie położenia
-        location = vector2d((double)rand() / RAND_MAX * size, (double)rand() / RAND_MAX * size);
+    subelement = xmlDoc->NewElement("collisionCenter");
+    subsubelement = xmlDoc->NewElement("x");
+    subsubelement->SetText(collisionCenter.x);
+    subelement->InsertEndChild(subsubelement);
+    subsubelement = xmlDoc->NewElement("y");
+    subsubelement->SetText(collisionCenter.y);
+    subelement->InsertEndChild(subsubelement);
+    root->InsertEndChild(subelement);
 
-        // inicjowanie nowej encji
-        tmpEntity = new SellingPoint(score);
-        tmpEntity->Load(renderer, entityGfxData.path, entityGfxData.frameHeight, entityGfxData.numberOfFrames,
-                        entityGfxData.numberOfFrames, location, mass);
-        // upewnienie się, że encja z niczym nie koliduje
-        int safety = 0; // dodatkowe zabezpieczenie
-        tmpEntity->CheckCollisions();
-        while(tmpEntity->colliding.size() > 0) {
-            location = vector2d((double)rand() / RAND_MAX * size, (double)rand() / RAND_MAX * size);
-            tmpEntity->Load(renderer, entityGfxData.path, entityGfxData.frameHeight, entityGfxData.numberOfFrames,
-                            entityGfxData.numberOfFrames, location, mass);
-            if(safety > 1000) {
-                std::cerr << "Poziom zbyt mały lub za dużo obiektów." << std::endl;
-                return;
-            }
-            ++safety;
-        }
-        // dodawanie encji
-        entities.push_back(tmpEntity);
-    }
-}
+    subelement = xmlDoc->NewElement("animation");
+    animation.Serialize(xmlDoc, subelement);
+    root->InsertEndChild(subelement);
 
-GfxData::GfxData(std::__cxx11::string data) {
-    std::string tmpString = "";
-    const char* dataChars = data.c_str();
-
-    // ścieżka do obrazka
-    Uint16 i = 0;
-    while(dataChars[i] != ',') {
-        tmpString += dataChars[i];
-        ++i;
-    }
-    path = tmpString;
-
-    // klasa obiektu
-    tmpString = "";
-    ++i;
-    while(dataChars[i] != ',') {
-        tmpString += dataChars[i];
-        ++i;
-    }
-    entityType = Entity::EntityTypeCode(tmpString);
-
-    // wysokość klatki
-    tmpString = "";
-    ++i;
-    while(dataChars[i] != ',') {
-        tmpString += dataChars[i];
-        ++i;
-    }
-    frameHeight = (Uint16)std::stoi(tmpString);
-
-    // liczba klatek
-    tmpString = "";
-    ++i;
-    while(dataChars[i] != ',') {
-        tmpString += dataChars[i];
-        ++i;
-    }
-    numberOfFrames = (Uint8)std::stoi(tmpString);
-
-    // liczba klatek na sekundę
-    tmpString = "";
-    ++i;
-    while(dataChars[i] != '\0') {
-        tmpString += dataChars[i];
-        ++i;
-    }
-    framesPerSecond = (Uint8)std::stoi(tmpString);
-}
-
-Uint8 Entity::EntityTypeCode(std::__cxx11::string name) {
-    if(name == "SPACESHIP") {
-        return ENTITY_TYPE_SPACESHIP;
-    }
-    if(name == "PLANET") {
-        return ENTITY_TYPE_PLANET;
-    }
-    if(name == "ASTEROID") {
-        return ENTITY_TYPE_ASTEROID;
-    }
-    if(name == "ROCKET") {
-        return ENTITY_TYPE_ROCKET;
-    }
-    if(name == "PARTICLE") {
-        return ENTITY_TYPE_PARTICLE;
-    }
-    if(name == "SELLINGPOINT") {
-        return ENTITY_TYPE_SELLING_POINT;
-    }
-    return ENTITY_TYPE_UNDEFINED;
-}
-
-std::vector<GfxData> Entity::FilterGfxData(std::vector<GfxData> gfxData, Uint8 type) {
-    std::vector<GfxData> filteredData;
-    for(uint i = 0; i < gfxData.size(); ++i) {
-        if(gfxData[i].entityType == type) {
-            filteredData.push_back(gfxData[i]);
-        }
-    }
-    return filteredData;
-}
-
-bool Entity::Serialize(std::ofstream& file) {
-    if(!file.is_open()) {
-        std::cerr << "Błąd podczas próby serializacji obiektu. Plik nie jest otwarty do zapisu." << std::endl;
-        return false;
-    }
-    file << "<Entity><r>" << r;
-    file << "</r><velocity>" << velocity.x << ":" << velocity.y;
-    file << "</velocity><acceleration>" << acceleration.x << ":" << acceleration.y;
-    file << "</acceleration><force>" << force.x << ":" << force.y;
-    file << "</force><texture>" << texture->path;
-    file << "</texture><deathAnimationStarted>" << deathAnimationStarted;
-    file << "</deathAnimationStarted><alive>" << alive;
-    file << "</alive><location>" << location.x << ":" << location.y;
-    file << "</location><rotation>" << rotation;
-    file << "</rotation><type>" << (Uint32)type;
-    file << "</type><mass>" << mass;
-    file << "</mass><collisionCenter>" << collisionCenter.x << ":" << collisionCenter.y;
-    file << "</collisionCenter>";
-    animation.Serialize(file);
-    file << "</Entity>";
     return true;
 }
 
-bool Entity::Deserialize(std::ifstream& file, SDL_Renderer* renderer) {
-    if(!file.is_open()) {
-        std::cerr << "Błąd podczas próby deserializacji obiektu. Plik nie jest otwarty do odczytu." << std::endl;
-        return false;
-    }
+bool Entity::Deserialize(tinyxml2::XMLNode *root, SDL_Renderer *renderer) {
+    tinyxml2::XMLElement* element = root->FirstChildElement("r");
+    element->QueryDoubleText(&r);
 
-    std::string tmpStr;
-    r = std::stod(XMLhelper::GetValue(file, "<r>"));
-    tmpStr = XMLhelper::GetValue(file, "<velocity>");
-    velocity = vector2d(tmpStr);
-    tmpStr = XMLhelper::GetValue(file, "<acceleration>");
-    acceleration = vector2d(tmpStr);
-    tmpStr = XMLhelper::GetValue(file, "<force>");
-    force = vector2d(tmpStr);
-    texture = new Texture(renderer, XMLhelper::GetValue(file, "<texture>"));
-    deathAnimationStarted = stoi(XMLhelper::GetValue(file, "<deathAnimationStarted>"));
-    if(XMLhelper::GetValue(file, "<alive>") == "1") {
-        alive = true;
-    } else {
-        alive = false;
-    }
-    tmpStr = XMLhelper::GetValue(file, "<location>");
-    location = vector2d(tmpStr);
-    rotation = std::stod(XMLhelper::GetValue(file, "<rotation>"));
-    type = (Uint8)std::stoi(XMLhelper::GetValue(file, "<type>"));
-    mass = std::stod(XMLhelper::GetValue(file, "<mass>"));
-    collisionCenter = XMLhelper::GetValue(file, "<collisionCenter>");
-    XMLhelper::SkipTag(file, "<Animation>");
-    animation.Deserialize(file);
-    XMLhelper::SkipTag(file, "</Animation>");
-    XMLhelper::SkipTag(file, "</Entity>");
+    element = root->FirstChildElement("velocity");
+    tinyxml2::XMLElement* subelement = element->FirstChildElement("x");
+    subelement->QueryDoubleText(&velocity.x);
+    subelement = element->FirstChildElement("y");
+    subelement->QueryDoubleText(&velocity.y);
+
+    element = root->FirstChildElement("acceleration");
+    subelement = element->FirstChildElement("x");
+    subelement->QueryDoubleText(&acceleration.x);
+    subelement = element->FirstChildElement("y");
+    subelement->QueryDoubleText(&acceleration.y);
+
+    element = root->FirstChildElement("force");
+    subelement = element->FirstChildElement("x");
+    subelement->QueryDoubleText(&force.x);
+    subelement = element->FirstChildElement("y");
+    subelement->QueryDoubleText(&force.y);
+
+    element = root->FirstChildElement("texture");
+    std::string path = element->GetText();
+    texture = new Texture(renderer, path);
+
+    element = root->FirstChildElement("deathAnimationStarted");
+    element->QueryUnsignedText(&deathAnimationStarted);
+
+    element = root->FirstChildElement("alive");
+    element->QueryBoolText(&alive);
+
+    element = root->FirstChildElement("location");
+    subelement = element->FirstChildElement("x");
+    subelement->QueryDoubleText(&location.x);
+    subelement = element->FirstChildElement("y");
+    subelement->QueryDoubleText(&location.y);
+
+    element = root->FirstChildElement("rotation");
+    element->QueryDoubleText(&rotation);
+
+    Uint32 tmp;
+    element = root->FirstChildElement("type");
+    element->QueryUnsignedText(&tmp);
+    type = tmp;
+
+    element = root->FirstChildElement("mass");
+    element->QueryDoubleText(&mass);
+
+    element = root->FirstChildElement("collisionCenter");
+    subelement = element->FirstChildElement("x");
+    subelement->QueryDoubleText(&collisionCenter.x);
+    subelement = element->FirstChildElement("y");
+    subelement->QueryDoubleText(&collisionCenter.y);
+
+    element = root->FirstChildElement("animation");
+    animation.Deserialize(element);
+
     return true;
+}
+
+vector2d Entity::CollisionCenter() {
+    double angle = rotation * M_PI / 180;
+    return vector2d(collisionCenter.x * cos(angle) - collisionCenter.y * sin(angle),
+                    collisionCenter.x * sin(angle) + collisionCenter.y * cos(angle));
+}
+
+Uint8 Entity::VisibleCopy() {
+    double leftEdge   = Camera::camera.LeftEdge(level.r);
+    double rightEdge  = Camera::camera.RightEdge(level.r);
+    double topEdge    = Camera::camera.TopEdge(level.r);
+    double bottomEdge = Camera::camera.BottomEdge(level.r);
+
+    if(leftEdge < rightEdge) {
+        if(topEdge < bottomEdge) {
+            // kamera nie podzielona
+            if(location.x + animation.Width() < leftEdge) {
+                // jeżeli na lewo od lewej krawędzi kamery to encja nie jest widoczna
+                return LEVEL_COPY_NONE;
+            }
+            if(location.x - animation.Width() > rightEdge) {
+                // jeżeli na prawo od lewej krawędzi kamery to encja nie jest widoczna
+                return LEVEL_COPY_NONE;
+            }
+            if(location.y + animation.Height() < topEdge) {
+                // jeżeli powyżej górnej krawędzi to encja nie jest widoczna
+                return LEVEL_COPY_NONE;
+            }
+            if(location.y - animation.Height() > bottomEdge) {
+                // jeżeli poniżej górnej krawędzi to encja nie jest widoczna
+                return LEVEL_COPY_NONE;
+            }
+            return LEVEL_COPY_DEFAULT;
+        } else {
+            // kamera podzielona w pionie
+            // kopia w zależności od położenia
+            if(topEdge <= level.r - Camera::camera.windowHeight / 2) {
+                // środek kamery na dole
+                if(location.y + animation.Height() / 2 >= topEdge) {
+                    return LEVEL_COPY_DEFAULT;
+                }
+                if(location.y - animation.Height() / 2 <= bottomEdge) {
+                    return LEVEL_COPY_MIDDLE_BOTTOM;
+                }
+            } else {
+                // środek kamery na górze
+                if(location.y + animation.Height() / 2 >= topEdge) {
+                    return LEVEL_COPY_MIDDLE_TOP;
+                }
+                if(location.y - animation.Height() / 2 <= bottomEdge) {
+                    return LEVEL_COPY_DEFAULT;
+                }
+            }
+        }
+    } else {
+        if(topEdge < bottomEdge) {
+            // kamera podzielona w poziomie
+            // kopia w zależności od położenia
+            if(leftEdge <= level.r - Camera::camera.windowWidth / 2) {
+                // środek kamery po prawej
+                if(location.x + animation.Width() / 2 >= leftEdge) {
+                    return LEVEL_COPY_DEFAULT;
+                }
+                if(location.x - animation.Width() / 2 <= bottomEdge) {
+                    return LEVEL_COPY_RIGHT_MIDDLE;
+                }
+            } else {
+                // środek kamery po lewej
+                if(location.x + animation.Width() / 2 >= leftEdge) {
+                    return LEVEL_COPY_LEFT_MIDDLE;
+                }
+                if(location.x - animation.Width() / 2 <= bottomEdge) {
+                    return LEVEL_COPY_DEFAULT;
+                }
+            }
+        } else {
+            // kamera podzielona na cztery
+            // kopia w zależności od położenia
+            if(rightEdge >= -level.r + Camera::camera.windowWidth / 2 &&
+               bottomEdge >= -level.r + Camera::camera.windowHeight / 2) {
+                // środek kamery w lewym górnym rogu
+                if(location.y - animation.Height() / 2 <= bottomEdge) {
+                    // górne ćwiartki
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa górna ćwiartka
+                        return LEVEL_COPY_DEFAULT;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa górna ćwiartka
+                        return LEVEL_COPY_LEFT_MIDDLE;
+                    }
+                }
+                if(location.y + animation.Height() / 2 >= topEdge) {
+                    // dolna ćwiartka
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa dolna ćwiartka
+                        return LEVEL_COPY_MIDDLE_TOP;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa dolna ćwiartka
+                        return LEVEL_COPY_LEFT_TOP;
+                    }
+                }
+            } else if(leftEdge <= level.r - Camera::camera.windowWidth / 2 &&
+                      bottomEdge >= -level.r + Camera::camera.windowHeight / 2) {
+                // środek kamery w prawym górnym rogu
+                if(location.y - animation.Height() / 2 <= bottomEdge) {
+                    // górne ćwiartki
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa górna ćwiartka
+                        return LEVEL_COPY_RIGHT_MIDDLE;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa górna ćwiartka
+                        return LEVEL_COPY_DEFAULT;
+                    }
+                }
+                if(location.y + animation.Height() / 2 >= topEdge) {
+                    // dolna ćwiartka
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa dolna ćwiartka
+                        return LEVEL_COPY_RIGHT_TOP;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa dolna ćwiartka
+                        return LEVEL_COPY_MIDDLE_TOP;
+                    }
+                }
+            } else if(leftEdge <= level.r - Camera::camera.windowWidth / 2 &&
+                      topEdge <= level.r - Camera::camera.windowHeight / 2) {
+                // środek kamery w prawym dolnym rogu
+                if(location.y - animation.Height() / 2 <= bottomEdge) {
+                    // górne ćwiartki
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa górna ćwiartka
+                        return LEVEL_COPY_RIGHT_BOTTOM;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa górna ćwiartka
+                        return LEVEL_COPY_MIDDLE_BOTTOM;
+                    }
+                }
+                if(location.y + animation.Height() / 2 >= topEdge) {
+                    // dolna ćwiartka
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa dolna ćwiartka
+                        return LEVEL_COPY_RIGHT_MIDDLE;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa dolna ćwiartka
+                        return LEVEL_COPY_DEFAULT;
+                    }
+                }
+            } else {
+                // środek kamery w lewym dolnym rogu
+                if(location.y - animation.Height() / 2 <= bottomEdge) {
+                    // górne ćwiartki
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa górna ćwiartka
+                        return LEVEL_COPY_MIDDLE_BOTTOM;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa górna ćwiartka
+                        return LEVEL_COPY_LEFT_BOTTOM;
+                    }
+                }
+                if(location.y + animation.Height() / 2 >= topEdge) {
+                    // dolna ćwiartka
+                    if(location.x - animation.Width() <= rightEdge) {
+                        // lewa dolna ćwiartka
+                        return LEVEL_COPY_DEFAULT;
+                    }
+                    if(location.x + animation.Width() / 2 >= leftEdge) {
+                        // prawa dolna ćwiartka
+                        return LEVEL_COPY_LEFT_MIDDLE;
+                    }
+                }
+            }
+        }
+    }
+    return LEVEL_COPY_NONE;
 }

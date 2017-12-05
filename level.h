@@ -3,10 +3,13 @@
 
 #include <SDL2/SDL.h>
 #include <sstream>
+#include <tinyxml2.h>
 #include "xmlhelper.h"
 
 // pozycje kopii poziomu do renderowania
 enum {
+    LEVEL_COPY_NONE,
+    LEVEL_COPY_DEFAULT,
     LEVEL_COPY_MIDDLE_BOTTOM,
     LEVEL_COPY_LEFT_BOTTOM,
     LEVEL_COPY_LEFT_MIDDLE,
@@ -21,17 +24,17 @@ class Level
 {
     private:
         Uint32 startTime;
+        Uint32 timeLimit;
 
     public:
-        Uint32 timeLimit;
         double r; // promień wszechświata
         Level();
         Level(double r);
         Level(double r, Uint32 timeLimit);
         Uint32 TimeLeft();
         std::string TimeLeftString();
-        bool Serialize(std::ofstream& file);
-        bool Deserialize(std::ifstream& file);
+        bool Serialize(tinyxml2::XMLDocument* xmlDoc, tinyxml2::XMLNode* root);
+        bool Deserialize(tinyxml2::XMLNode* root);
 };
 
 #endif // LEVEL_H

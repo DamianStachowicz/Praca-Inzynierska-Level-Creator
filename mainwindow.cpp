@@ -297,91 +297,92 @@ void MainWindow::UpdateComboBox() {
 void MainWindow::on_actionWczytaj_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this, tr("Wczytaj poziom"), "./", tr("Pliki XML (*.xml)"));
-    std::ifstream ifile;
-    ifile.open(fileName.toUtf8().constData());
+    tinyxml2::XMLDocument xmlDoc;
+    tinyxml2::XMLError result = xmlDoc.LoadFile(fileName.toUtf8().constData());
+    tinyxml2::XMLNode* root = xmlDoc.FirstChild();
 
-    if(!ifile.is_open()) {
+    if( result != tinyxml2::XML_SUCCESS ) {
         QMessageBox messageBox;
         messageBox.critical(0, "Błąd", "Nie udało się otworzyć pliku " + fileName + " do odczytu");
         messageBox.setFixedSize(500,200);
         return;
     }
 
-    XMLhelper::SkipTag(ifile, "<Engine>");
-    XMLhelper::GetValue(ifile, "<score>"); // niepotrzebne (każdy poziom zaczynamy z wynikiem 0)
-    int nrOfEntities = stoi(XMLhelper::GetValue(ifile, "<nrOfEntities>"));
-    Entity::entities.clear();
-    Uint8 type;
-    for(int i = 0; i < nrOfEntities; i++) {
-        type = (Uint8)std::stoi(XMLhelper::GetValue(ifile, "<entityType>"));
-        switch(type) {
-            case ENTITY_TYPE_ASTEROID:
-            {
-                Uint8 size = (Uint8)std::stoi(XMLhelper::GetValue(ifile, "<size>"));
-                Asteroid *tmp;
-                switch(size) {
-                    case ASTEROID_SIZE_BIG: tmp = new AsteroidBig(); break;
-                    case ASTEROID_SIZE_MIDDLE: tmp = new AsteroidMiddle(); break;
-                    case ASTEROID_SIZE_SMALL: tmp = new AsteroidSmall(); break;
-                }
-                Entity::entities.push_back(tmp);
-                tmp->Deserialize(ifile, NULL);
-                break;
-            }
-            case ENTITY_TYPE_PARTICLE:
-            {
-                Particle* tmp = new Particle();
-                Entity::entities.push_back(tmp);
-                tmp->Deserialize(ifile, NULL);
-                break;
-            }
-            case ENTITY_TYPE_PLANET:
-            {
-                Planet* tmp = new Planet();
-                Entity::entities.push_back(tmp);
-                tmp->Deserialize(ifile, NULL);
-                break;
-            }
-            case ENTITY_TYPE_ROCKET:
-            {
-                Rocket* tmp = new Rocket();
-                Entity::entities.push_back(tmp);
-                tmp->Deserialize(ifile, NULL);
-                break;
-            }
-            case ENTITY_TYPE_SELLING_POINT:
-            {
-                SellingPoint* tmp = new SellingPoint(NULL);
-                Entity::entities.push_back(tmp);
-                tmp->Deserialize(ifile, NULL);
-                break;
-            }
-            case ENTITY_TYPE_SPACESHIP:
-            {
-                SpaceShip* tmp = new SpaceShip();
-                Entity::entities.push_back(tmp);
-                tmp->Deserialize(ifile, NULL);
-                break;
-            }
-            default:
-            {
-                Entity* tmp = new Entity();
-                Entity::entities.push_back(tmp);
-                tmp->Deserialize(ifile, NULL);
-                break;
-            }
-        }
+    tinyxml2::XMLElement* element = root->FirstChildElement("level");
+    if( !Entity::level.Deserialize(element) ) {
+        QMessageBox messageBox;
+        messageBox.critical(0, "Błąd", "Nie udało szczytać informacji o obszarze rozgrywki");
+        messageBox.setFixedSize(500,200);
+        return;
     }
-
-    XMLhelper::GetValue(ifile, "<playerIdx>"); // Tylko pomijam na razie
-
-    Entity::level.Deserialize(ifile);
-    Entity::timer.Deserialize(ifile);
-
-    ui->levelEdgeSpinBox->setValue(Entity::level.r);
-    ui->timeLimitSpinBox->setValue(Entity::level.timeLimit);
-
-    ifile.close();
+    element = root->FirstChildElement("timer");
+    if( !Entity::timer.Deserialize(element) ) {
+        QMessageBox messageBox;
+        messageBox.critical(0, "Błąd", "Nie udało szczytać informacji o timerze");
+        messageBox.setFixedSize(500,200);
+        return;
+    }
+    element = root->FirstChildElement("entities");
+    tinyxml2::XMLElement* listElement = element->FirstChildElement();
+    Uint32 tmp;
+    Entity* tmpEntity;
+    while(listElement != NULL) {
+        if( std::string(listElement->Name()) == "Asteroid" ) {
+            listElement->FirstChildElement("size")->QueryUnsignedText(&tmp);
+            Asteroid* asteroid;
+            switch(tmp) {
+                case ASTEROID_SIZE_BIG: {
+                    asteroid = new AsteroidBig();
+                    asteroid->Deserialize(listElement, NULL);
+                    Entity::entities.push_back(asteroid);
+                    break;
+                }
+                case ASTEROID_SIZE_MIDDLE: {
+                    asteroid = new AsteroidMiddle();
+                    asteroid->Deserialize(listElement, NULL);
+                    Entity::entities.push_back(asteroid);
+                    break;
+                }
+                case ASTEROID_SIZE_SMALL:  {
+                    asteroid = new AsteroidSmall();
+                    asteroid->Deserialize(listElement, NULL);
+                    Entity::entities.push_back(asteroid);
+                    break;
+                }
+                default:  {
+                    asteroid = new Asteroid();
+                    asteroid->Deserialize(listElement, NULL);
+                    Entity::entities.push_back(asteroid);
+                    break;
+                }
+            }
+        } else if( std::string(listElement->Name()) == "SpaceShip" ) {
+            SpaceShip* spaceShip = new SpaceShip();
+            spaceShip->Deserialize(listElement, NULL);
+            Entity::entities.push_back(spaceShip);
+        } else if( std::string(listElement->Name()) == "Particle" ) {
+            Particle* particle = new Particle();
+            particle->Deserialize(listElement, NULL);
+            Entity::entities.push_back(particle);
+        } else if( std::string(listElement->Name()) == "Planet" ) {
+            Planet* planet = new Planet();
+            planet->Deserialize(listElement, NULL);
+            Entity::entities.push_back(planet);
+        } else if( std::string(listElement->Name()) == "Rocket" ) {
+            Rocket* rocket = new Rocket();
+            rocket->Deserialize(listElement, NULL);
+            Entity::entities.push_back(rocket);
+        } else if( std::string(listElement->Name()) == "SellingPoint" ) {
+            SellingPoint* sellingPoint = new SellingPoint(NULL);
+            sellingPoint->Deserialize(listElement, NULL);
+            Entity::entities.push_back(sellingPoint);
+        } else {
+            tmpEntity = new Entity();
+            tmpEntity->Deserialize(listElement, NULL);
+            Entity::entities.push_back(tmpEntity);
+        }
+        listElement = listElement->NextSiblingElement();
+    }
 
     UpdateView();
     UpdateComboBox();
@@ -389,43 +390,51 @@ void MainWindow::on_actionWczytaj_triggered()
 
 void MainWindow::on_actionZapisz_triggered()
 {
-    QString fileName = QFileDialog::getSaveFileName(this, tr("Zapisz poziom"), "./", tr("Pliki XML (*.xml)"));
-    std::ofstream ofile;
-    ofile.open(fileName.toUtf8().constData());
+    tinyxml2::XMLDocument* xmlDoc = new tinyxml2::XMLDocument();
+    tinyxml2::XMLNode* root = xmlDoc->NewElement("Engine");
+    xmlDoc->InsertFirstChild(root);
+    tinyxml2::XMLElement* element = xmlDoc->NewElement("score");
+    element->SetText(0);
+    root->InsertEndChild(element);
+    element = xmlDoc->NewElement("entities");
+    tinyxml2::XMLElement* subelement;
+    std::string entityType;
+    for(uint i = 0; i < Entity::entities.size(); i++) {
+        switch(Entity::entities[i]->type) {
+            case ENTITY_TYPE_ASTEROID: entityType = "Asteroid"; break;
+            case ENTITY_TYPE_PARTICLE: entityType = "Particle"; break;
+            case ENTITY_TYPE_PLANET: entityType = "Planet"; break;
+            case ENTITY_TYPE_ROCKET: entityType = "Rocket"; break;
+            case ENTITY_TYPE_SELLING_POINT: entityType = "SellingPoint"; break;
+        case ENTITY_TYPE_SPACESHIP: entityType = "SpaceShip"; break;
+            default: entityType = "Default";
+        }
+        subelement = xmlDoc->NewElement(entityType.c_str());
+        if( !Entity::entities[i]->Serialize(xmlDoc, subelement) ) {
+            return;
+        }
+        element->InsertEndChild(subelement);
+    }
+    root->InsertEndChild(element);
+    element = xmlDoc->NewElement("level");
+    if( !Entity::level.Serialize(xmlDoc, element) ) {
+        return;
+    }
+    root->InsertEndChild(element);
+    element = xmlDoc->NewElement("timer");
+    if( !Entity::timer.Serialize(xmlDoc, element) ) {
+        return;
+    }
+    root->InsertEndChild(element);
 
-    if(!ofile.is_open()) {
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Zapisz poziom"), "./", tr("Pliki XML (*.xml)"));
+    tinyxml2::XMLError result = xmlDoc->SaveFile(fileName.toUtf8().constData());
+    if( result != tinyxml2::XML_SUCCESS ) {
         QMessageBox messageBox;
-        messageBox.critical(0, "Błąd", "Nie udało się otworzyć pliku " + fileName + " do zapisu");
+        messageBox.critical(0, "Błąd", "Nie udało się zapisać pliku " + fileName);
         messageBox.setFixedSize(500,200);
         return;
     }
-
-    ofile << "<Engine><score>0</score>";
-    ofile << "<nrOfEntities>" << Entity::entities.size() << "</nrOfEntities>";
-    for(uint i = 0; i < Entity::entities.size(); i++) {
-        ofile << "<entityType>" << (Uint16)Entity::entities[i]->type << "</entityType>";
-        if( !Entity::entities[i]->Serialize(ofile) ) {
-            QMessageBox messageBox;
-            messageBox.critical(0, "Błąd", "Błąd podczas próby zapisania pliku " + fileName);
-            messageBox.setFixedSize(500,200);
-            return;
-        }
-    }
-    int ID = ui->playerComboBox->currentText().split(" ")[0].toInt();
-    ofile << "<playerIdx>" << ID << "</playerIdx>";
-
-    ofile << "<Level><startTime>0</startTime>";
-    ofile << "<timeLimit>" << ui->timeLimitSpinBox->value() << "</timeLimit>";
-    ofile << "<r>" << ui->levelEdgeSpinBox->value() << "</r></Level>";
-
-    ofile << "<Timer><FPS>60</FPS>";
-    ofile << "<dt>1</dt>";
-    ofile << "<currentTime>0</currentTime>";
-    ofile << "<stepsPerFrame>16</stepsPerFrame></Timer>";
-
-    ofile << "</Engine>";
-
-    ofile.close();
 }
 
 void MainWindow::on_zoomButtonUp_clicked()
