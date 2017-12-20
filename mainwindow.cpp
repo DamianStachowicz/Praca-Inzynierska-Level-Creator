@@ -502,3 +502,10 @@ void MainWindow::on_colRPosSpinBox_editingFinished()
     entity->r = value;
     UpdateView();
 }
+
+void MainWindow::on_actionNowy_projekt_triggered()
+{
+    Entity::entities.clear();
+    UpdateView();
+    UpdateComboBox();
+}

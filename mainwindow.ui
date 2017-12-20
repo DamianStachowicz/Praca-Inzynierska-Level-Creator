@@ -411,6 +411,7 @@
     </property>
     <addaction name="actionWczytaj"/>
     <addaction name="actionZapisz"/>
+    <addaction name="actionNowy_projekt"/>
    </widget>
    <addaction name="menuPlik"/>
   </widget>
@@ -431,6 +432,11 @@
   <action name="actionZapisz">
    <property name="text">
     <string>&amp;Zapisz</string>
+   </property>
+  </action>
+  <action name="actionNowy_projekt">
+   <property name="text">
+    <string>Nowy projekt</string>
    </property>
   </action>
  </widget>

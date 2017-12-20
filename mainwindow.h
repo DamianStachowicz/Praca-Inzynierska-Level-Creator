@@ -69,6 +69,8 @@ private slots:
 
     void on_colRPosSpinBox_editingFinished();
 
+    void on_actionNowy_projekt_triggered();
+
 private:
     Ui::MainWindow *ui;
     QGraphicsScene *scene;
